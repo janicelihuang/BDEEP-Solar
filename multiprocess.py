@@ -1,4 +1,5 @@
 import csv
+import time
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -29,16 +30,16 @@ def load_webpage(url):
     options = webdriver.ChromeOptions()
     options.add_argument('headless')
     options.add_argument('--disable-gpu')
+    options.add_argument('no-sandbox')
 
     try:
         driver = webdriver.Chrome(chrome_options=options)
         driver.get(url)
         if driver.title.find("Home") != -1:
             return driver
-        else
+        else:
             return None
     except WebDriverException:
-        driver.quit()
         return None
 
 def get_sunnumber(driver, address):
@@ -46,15 +47,13 @@ def get_sunnumber(driver, address):
     elem = wait_and_get(driver, cond)
     if elem == None:
         return ("No Results")
-    elem.clear()
-    elem.send_keys(address)
-    elem.send_keys(Keys.RETURN)
     try:
-        alert = driver.switch_to_alert()
-        alert.accept()
-        return ("No Results")
-    except NoAlertPresentException:
-        pass
+        elem.clear()
+        elem.send_keys(address)
+        driver.execute_script("window.confirm = function(){return true;}");
+        elem.send_keys(Keys.RETURN)
+    except UnexpectedAlertPresentException:
+        return ("NA")
 
     cond = EC.presence_of_element_located((By.CSS_SELECTOR, "button.btn"))
     elem = wait_and_get(driver, cond)
@@ -75,6 +74,7 @@ def get_sunnumber(driver, address):
     return elem.text
 
 def f(x):
+    start_time = time.time()
     inputfile = x[0]
     outputfile = x[1]
     processid = x[2]
@@ -91,9 +91,13 @@ def f(x):
                     address = row['PropertyFullStreetAddress'] + " " + row['PropertyCity'] + " " + row['State'] + " " + row["PropertyZip"]
                     sun_number = get_sunnumber(driver, address)
                     row['SunNumber'] = sun_number
-                    print (processid, ": Retrieved Sun Number")
+                    print (processid, ": Retrieved Sun Number: ", time.time()-start_time)
                     writer.writerow(row)
-                    driver.close()
+                    try:
+                        if driver != None:
+                            driver.close()
+                    except WebDriverException:
+                        pass
                 else:
                     row['SunNumber'] = 'error'
                     writer.writerow(row)
@@ -101,10 +105,12 @@ def f(x):
 
 
 if __name__ == '__main__':
-    p = Pool(processes=5)
+    p = Pool(processes=7)
     p1 = ("CTHedonics_unique_00.csv","CTHedonics_updated_00.csv", 1)
     p2 = ("CTHedonics_unique_01.csv","CTHedonics_updated_01.csv", 2)
     p3 = ("CTHedonics_unique_02.csv","CTHedonics_updated_02.csv", 3)
     p4 = ("CTHedonics_unique_03.csv","CTHedonics_updated_03.csv", 4)
     p5 = ("CTHedonics_unique_04.csv","CTHedonics_updated_04.csv", 5)
-    p.map(f, [p1,p2,p3,p4,p5])
+    p6 = ("CTHedonics_unique_05.csv", "CTHedonics_updated_05.csv", 6)
+    p7 = ("CTHedonics_unique_06.csv", "CTHedonics_updated_06.csv", 7)
+    p.map(f, [p1,p2,p3,p4,p5,p6,p7])
